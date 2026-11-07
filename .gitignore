@@ -1,3 +1,10 @@
+# local project files and data
+**.code-workspace
+**tmp/
+**temp/
+**data/
+**logs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
