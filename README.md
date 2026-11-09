@@ -1,6 +1,6 @@
-# Python Project Template. Barebones
+# Python Project Template. Containerized App
 
-Barebones for a modern Python projects - a project template with all infrastructure for maintaining and testing configured and installed. Could be helpful if you are:
+A project template for a modern Python projects with all infrastructure for maintaining and testing configured and installed. Could be helpful if you are:
 - **Starting a new Python project** and want a solid foundation with best practices already configured
 - **Learning modern Python development** patterns, including dependency management, testing, and CI/CD
 - **A DevOps engineer** looking for a simple Python app to experiment with containerization, deployment pipelines, or monitoring
@@ -14,6 +14,8 @@ Barebones for a modern Python projects - a project template with all infrastruct
 - Linux OS
 - Python 3.13
 - make (optional, only if you plan to use make commands)
+- docker and docker compose
+- trivy (see [official installation documentation](https://trivy.dev/docs/latest/getting-started/installation/))
 
 ---
 
@@ -26,6 +28,15 @@ Barebones for a modern Python projects - a project template with all infrastruct
 - **pytest**: framework for tests and a basic test suite
 - **centralized app configuration**: all app settings in one place (core/config.py module)
 - **basic logging**: basic app logging configuration (core.logging.py module)
+- **Dockerfile**: document for creating a Docker image (*Added*)
+- **docker compose**:  tool for defining and running multi-container applications (*Added*)
+- **Trivy**: security scanner for container images, code, and configurations (*Added*)
+
+---
+
+## Previous Stage
+
+1. [Python Project Barebones](https://github.com/ic-devops-lab/app-templates-py/tree/barebones-v1.0.0)
 
 ---
 
@@ -50,7 +61,6 @@ cp .env.example .env
 ## Quick start
 
 ```bash
-uv lock
 uv sync --locked
 
 make run
@@ -209,5 +219,146 @@ Get a list of all make commands available in the project:
 ```bash
 make help
 ```
+
+---
+
+## Containerization
+
+### Dockerfile
+
+File: [`Dockerfile`](./Dockerfile)
+
+The builder uses the official uv image, while the runtime uses a minimal Python image without uv or build tools.
+
+The dependency installation is split into two steps so changes to application source code don't force a full dependency reinstall.
+
+A few important choices:
+- `--locked` in `uv sync` ensures the lockfile remains unchanged during the build.
+- `--no-dev` in `uv sync` excludes Ruff, mypy, pytest, Bandit, and other development dependencies.
+- `--no-editable` in `uv sync` installs the application as a regular package into `.venv` next to project's dependencies rather than linking it to source files.
+  This is possible because our `pyproject.toml` file has the `build-system` section configured
+- The virtual environment is copied into the runtime image, so the application doesn't require `uv` to start.
+- The production image intentionally excludes pip to eliminate 5 high vulnerabilities that it brings.
+- `CMD`, rather than `ENTRYPOINT`, makes it straightforward to override the process later, for example for API or worker containers.
+
+We're deliberately not copying `.env` into the image. Runtime configuration should be supplied externally.
+
+**Build and Run**:
+
+```bash
+# manual build
+docker build -t py-app-tmpl:dev .
+
+docker run --rm py-app-tmpl:dev
+# expected output similar to:
+2026-11-09 10:02:39,477 INFO [py_app_tmpl.main] Application started
+
+# check the runtime user
+docker run --rm --entrypoint id py-app-tmpl:dev
+# expected: a non-root UID and GID
+
+# check runtime configuration
+docker run --rm -e LOG_LEVEL=DEBUG py-app-tmpl:dev
+# debug log expected in the output similar to:
+2026-11-09 10:22:50,291 DEBUG [py_app_tmpl.main] Debug mode enabled
+
+# check the image contents
+docker run --rm \
+  --entrypoint sh \
+  py-app-tmpl:dev \
+  -c 'command -v python; command -v py-app-tmpl; command -v uv || true'
+# the application and Python should be available; uv should not be installed in the runtime image
+```
+
+---
+
+### Docker Compose
+
+File: [`compose.yaml`](./compose.yaml)
+
+A few design decisions:
+- `build.context: .` keeps the project root as the Docker build context.
+- `image` gives the built image a predictable local name.
+- `environment` explicitly passes configuration into the container.
+- `${VAR:-default}` uses a default when the variable is unset or empty.
+- No ports, volumes, restart, or healthcheck are needed for our current simplistic CLI application.
+
+> **Important note**: because our application exits after printing its log messages, `docker compose run --rm app` is more appropriate than `docker compose up -d` at this stage. And there's no restart policies or health checks added as the app is short-lived for now.
+
+**Build and Run**:
+
+Commands:
+```bash
+# build the image
+docker compose build app
+
+# run the application
+docker compose run --rm app
+# expected output similar to:
+[+] Creating 1/1
+ ✔ Network py-app-tmpl_default  Created                                                                                                                                                                          0.0s
+2026-11-09 10:50:09,126 INFO [py_app_tmpl.main] Application started
+
+# check runtime environment are taken by the app
+LOG_LEVEL=DEBUG docker compose run --rm app
+# debug log expected in the output
+# instead explicit variable setting up `LOG_LEVEL=DEBUG` you can modify your local .env file
+
+# inspect the resolved configuration
+docker compose config
+LOG_LEVEL=DEBUG docker compose config
+
+# check docker compose accepts custom image name and tag correctly
+IMAGE_NAME=my-python-app IMAGE_TAG=v1.0.0 docker compose config --images
+# expected result
+my-python-app:v1.0.0
+
+# remove Docker Compose resources
+docker compose down
+```
+
+Using `make` commands:
+```bash
+# build the application image
+make docker-build
+
+# run the application in a temporary container
+make docker-run
+LOG_LEVEL=DEBUG make docker-run
+
+# stop and remove Compose-managed containers
+make docker-down
+```
+
+---
+
+### Image Security Scan with Trivy
+
+```bash
+mkdir -p tmp
+# full scan with report
+trivy image \
+  --scanners vuln \
+  --format table \
+  --output tmp/trivy-report.txt \
+  py-app-tmpl:dev
+
+
+docker image inspect py-app-tmpl:dev \
+  --format '{{.Created}}'
+trivy image \
+  --scanners vuln \
+  --severity HIGH,CRITICAL \
+  --format table \
+  py-app-tmpl:dev
+
+# using make
+# # scan an image (that already built)
+make docker-scan
+# # build a fresh image and scan it
+make docker-ci
+```
+
+See [a doc with some techniques of getting rid of vulnerabilities](./docs/trivy-eliminating-risks.md)
 
 ---

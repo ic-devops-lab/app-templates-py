@@ -1,0 +1,15 @@
+
+name: py-app-tmpl
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-py-app-tmpl}:${IMAGE_TAG:-dev}
+
+    environment:
+      APP_NAME: ${APP_NAME:-Python Project Template}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}

@@ -11,3 +11,4 @@ def main() -> None:
     configure_logging(settings.log_level)
 
     logger.info("Application started")
+    logger.debug("Debug mode enabled")
