@@ -81,7 +81,7 @@ These packages were also reported in the original Alpine base image, so they are
 
 ```bash
 # Locate the packages
-docker run --rm --entrypoint sh py-app-tmpl:dev -c '
+docker run --rm --entrypoint sh py-app-api:dev -c '
 find / -type d \( \
   -name "msgpack-*.dist-info" -o \
   -name "setuptools-*.dist-info" -o \
@@ -95,7 +95,7 @@ trivy image \
   --severity HIGH,CRITICAL \
   --format json \
   --output tmp/trivy-report.json \
-  py-app-tmpl:dev
+  py-app-api:dev
 
 jq '.Results[] |
   select(.Vulnerabilities != null) |
@@ -148,7 +148,7 @@ jq '.Results[] |
 
 Verify the runtime packages
 ```bash
-docker run --rm --entrypoint sh py-app-tmpl:dev -c '
+docker run --rm --entrypoint sh py-app-api:dev -c '
 find / -type d \( \
   -name "msgpack*" -o \
   -name "setuptools*" -o \

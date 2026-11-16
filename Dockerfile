@@ -19,7 +19,8 @@ FROM python:${PYTHON_VERSION}-alpine AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:${PATH}"
+    PATH="/app/.venv/bin:$PATH" \
+    API_PORT=${API_PORT:-8000}
 
 WORKDIR /app
 
@@ -32,4 +33,6 @@ COPY --from=builder /app/.venv /app/.venv
 
 USER app
 
-CMD ["py-app-tmpl"]
+EXPOSE ${API_PORT:-8000}
+
+CMD ["py-app-api"]
