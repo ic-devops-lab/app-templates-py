@@ -1,8 +1,8 @@
-import os
 from collections.abc import Iterator
 
 import pytest
 
+from helpers.test.env import TestEnv
 from py_app_tmpl.core.config import get_settings
 
 
@@ -15,10 +15,18 @@ def pytest_configure(config: pytest.Config) -> None:
     Intentionally enabled for import-time configuration safety.
     Please check out README for more details on configuration.
     """
-    os.environ["APP_NAME"] = "test_app"
-    os.environ["APP_VERSION"] = "testVersion"
-    os.environ["APP_ENV"] = "test"
-    os.environ["LOG_LEVEL"] = "ERROR"
+    test_env: TestEnv = TestEnv()
+    test_env.export_env()
+
+
+@pytest.fixture(autouse=True)
+def isolate_settings_cache() -> Iterator[None]:
+    """Ensure each test sees a fresh settings cache state."""
+    get_settings.cache_clear()
+
+    yield
+
+    get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -35,8 +43,4 @@ def override_settings(
 
         assert settings.app_name == "custom_app"
     """
-    get_settings.cache_clear()
-
     yield monkeypatch
-
-    get_settings.cache_clear()

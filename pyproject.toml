@@ -8,11 +8,16 @@ authors = [
     { name = "Iuri Covaliov", email = "iu.covaliov@gmail.com" }
 ]
 dependencies = [
+    "fastapi[standard]>=0.162.4,<0.163.0",
+    "gunicorn>=27.0.1,<27.1.0",
     "pydantic-settings>=2.16.2,<2.17.0",
+    "uvicorn>=0.54.0,<0.55.0",
+    "uvicorn-worker>=0.4.0,<0.5.0",
 ]
 
 [project.scripts]
 py-app-tmpl = "py_app_tmpl.main:main"
+py-app-api = "py_app_tmpl.api.main:main"
 
 [build-system]
 requires = ["uv_build>=0.9.7,<0.10.0"]
@@ -21,10 +26,13 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "bandit>=1.9.4,<1.10.0",
+    "httpx2>=2.16.0,<2.17.0",
     "mypy>=2.4.1,<2.5.0",
     "pytest>=9.2.0,<9.3.0",
+    "pytest-asyncio>=1.4.1.post1,<1.5.0",
     "pytest-cov>=7.1.0,<7.2.0",
     "ruff>=0.17.4,<0.18.0",
+    "types-gunicorn>=26.2.0.20261008",
 ]
 
 [tool.ruff]
@@ -34,7 +42,9 @@ line-length = 100
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
+pythonpath = ["src/py_app_tmpl"]
 testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 source = ["py_app_tmpl"]
@@ -45,9 +55,10 @@ fail_under = 95
 skip_empty = true
 
 [tool.mypy]
-python_version = "3.13"
-strict = true
-packages = ["py_app_tmpl"]
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = ["src"]
+files = ["src", "tests"]
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]

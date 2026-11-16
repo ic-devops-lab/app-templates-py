@@ -1,4 +1,4 @@
-# Python Project Template. Containerized App
+# Python Project Template. FastAPI Application
 
 A project template for a modern Python projects with all infrastructure for maintaining and testing configured and installed. Could be helpful if you are:
 - **Starting a new Python project** and want a solid foundation with best practices already configured
@@ -28,19 +28,23 @@ A project template for a modern Python projects with all infrastructure for main
 - **pytest**: framework for tests and a basic test suite
 - **centralized app configuration**: all app settings in one place (core/config.py module)
 - **basic logging**: basic app logging configuration (core.logging.py module)
-- **Dockerfile**: document for creating a Docker image (*Added*)
-- **docker compose**:  tool for defining and running multi-container applications (*Added*)
-- **Trivy**: security scanner for container images, code, and configurations (*Added*)
+- **Dockerfile**: document for creating a Docker image
+- **docker compose**:  tool for defining and running multi-container applications
+- **Trivy**: security scanner for container images, code, and configurations
+- **FastAPI App**: base for a FastAPI service with several check endpoints (*Added*)
+
+> See detailed Python code structure [here](./docs/architecture.md)
 
 ---
 
 ## Previous Stage
 
-1. [Python Project Barebones](https://github.com/ic-devops-lab/app-templates-py/tree/barebones-v1.0.0)
+1. [Python Project Template. Barebones](https://github.com/ic-devops-lab/app-templates-py/tree/barebones-v1.0.0)
+2. [Python Project Template. Containerized App](https://github.com/ic-devops-lab/app-templates-py/tree/containerized-v1.0.0)
 
 ---
 
-## config.py and environment variables
+## `config.py` and environment variables
 
 To keep all app settings in one place, the [`config.py`](./src/py_app_tmpl/core/config.py) module is used. All settings are gathered in the `Settings` class using the `pydantic-settings` library. If the `.env` file exists in the project's root directory, variables from it will overwrite the default settings.
 
@@ -56,6 +60,8 @@ make env
 cp .env.example .env
 ```
 
+For more details about app configuration, please, check out [`configuration.md` doc](./docs/configuration.md)
+
 ---
 
 ## Quick start
@@ -63,10 +69,39 @@ cp .env.example .env
 ```bash
 uv sync --locked
 
+# Test App
 make run
 # or
 uv run py-app-tmpl
+
+# FastAPI app
+make run-api
+# or
+uv run py-app-api
 ```
+
+---
+
+## FastAPI App
+
+Depending on configuration could be run using Uvicorn (test or single-worker environments) or Gunicorn (multi-worker environments).
+
+**Available endpoints**:
+- `/health`: Liveness probe
+- `/ready`: Readiness probe
+- `/info`: System info
+- `/`: Example sync endpoint
+- `/async_home`: Example async endpoint
+> In non-prod mode also FastAPI's interactive documentation is available at `/docs` and `/redoc`
+
+
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+curl http://localhost:8000/info
+```
+
+---
 
 ## Build
 
@@ -77,6 +112,8 @@ uv build
 # or
 make build
 ```
+
+---
 
 ## Testing
 
@@ -133,6 +170,8 @@ All app code can be checked and tested using:
   make ci
   ```
   > Local CI also includes build command to check whether the package can be built.
+---
+
 ---
 
 ### Test environment configuration
@@ -247,27 +286,28 @@ We're deliberately not copying `.env` into the image. Runtime configuration shou
 
 ```bash
 # manual build
-docker build -t py-app-tmpl:dev .
+docker build -t py-app-api:dev .
 
-docker run --rm py-app-tmpl:dev
-# expected output similar to:
-2026-11-09 10:02:39,477 INFO [py_app_tmpl.main] Application started
+docker run --rm \
+  -p 8000:8000 \
+  -e API_HOST=0.0.0.0 \
+  py-app-api:dev
+# API service expected to be up and serve endpoints
 
 # check the runtime user
-docker run --rm --entrypoint id py-app-tmpl:dev
+docker run --rm --entrypoint id py-app-api:dev
 # expected: a non-root UID and GID
 
 # check runtime configuration
-docker run --rm -e LOG_LEVEL=DEBUG py-app-tmpl:dev
-# debug log expected in the output similar to:
-2026-11-09 10:22:50,291 DEBUG [py_app_tmpl.main] Debug mode enabled
+docker run --rm -e LOG_LEVEL=DEBUG py-app-api:dev
+# debug log expected in the logs
 
 # check the image contents
 docker run --rm \
   --entrypoint sh \
-  py-app-tmpl:dev \
-  -c 'command -v python; command -v py-app-tmpl; command -v uv || true'
-# the application and Python should be available; uv should not be installed in the runtime image
+  py-app-api:dev \
+  -c 'command -v python; command -v py-app-tmpl; command -v py-app-api; command -v uv || true'
+# the application commands and Python should be available; uv should not be installed in the runtime image
 ```
 
 ---
@@ -281,27 +321,25 @@ A few design decisions:
 - `image` gives the built image a predictable local name.
 - `environment` explicitly passes configuration into the container.
 - `${VAR:-default}` uses a default when the variable is unset or empty.
-- No ports, volumes, restart, or healthcheck are needed for our current simplistic CLI application.
-
-> **Important note**: because our application exits after printing its log messages, `docker compose run --rm app` is more appropriate than `docker compose up -d` at this stage. And there's no restart policies or health checks added as the app is short-lived for now.
+- configured port is exposed for communication with the FastAPI application
+- No volumes, restart, or healthcheck are needed for our current simplistic FastAPI application.
 
 **Build and Run**:
 
 Commands:
 ```bash
 # build the image
-docker compose build app
+docker compose build api
 
 # run the application
-docker compose run --rm app
-# expected output similar to:
-[+] Creating 1/1
- ✔ Network py-app-tmpl_default  Created                                                                                                                                                                          0.0s
-2026-11-09 10:50:09,126 INFO [py_app_tmpl.main] Application started
+docker compose up api
+
+# run the application in a temporary container
+docker compose run --rm --service-ports api
 
 # check runtime environment are taken by the app
-LOG_LEVEL=DEBUG docker compose run --rm app
-# debug log expected in the output
+LOG_LEVEL=DEBUG docker compose up api
+# debug log expected in the logs
 # instead explicit variable setting up `LOG_LEVEL=DEBUG` you can modify your local .env file
 
 # inspect the resolved configuration
@@ -322,7 +360,7 @@ Using `make` commands:
 # build the application image
 make docker-build
 
-# run the application in a temporary container
+# run the application in a container
 make docker-run
 LOG_LEVEL=DEBUG make docker-run
 
@@ -341,16 +379,16 @@ trivy image \
   --scanners vuln \
   --format table \
   --output tmp/trivy-report.txt \
-  py-app-tmpl:dev
+  py-app-api:dev
 
 
-docker image inspect py-app-tmpl:dev \
+docker image inspect py-app-api:dev \
   --format '{{.Created}}'
 trivy image \
   --scanners vuln \
   --severity HIGH,CRITICAL \
   --format table \
-  py-app-tmpl:dev
+  py-app-api:dev
 
 # using make
 # # scan an image (that already built)
@@ -360,5 +398,20 @@ make docker-ci
 ```
 
 See [a doc with some techniques of getting rid of vulnerabilities](./docs/trivy-eliminating-risks.md)
+
+---
+
+## Troubleshooting
+
+### `curl: (7) Failed to connect to 127.0.0.1 port 8000 after 0 ms: Connection refused`
+
+If you use WSL on Windows, set `API_HOST` to "0.0.0.0" instead of default "127.0.0.1".
+
+`.env`
+```text
+...
+API_HOST="0.0.0.0"
+...
+```
 
 ---

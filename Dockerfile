@@ -17,9 +17,11 @@ RUN uv sync --locked --no-dev --no-editable
 
 FROM python:${PYTHON_VERSION}-alpine AS runtime
 
+ARG API_PORT=8000
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:${PATH}"
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -32,4 +34,6 @@ COPY --from=builder /app/.venv /app/.venv
 
 USER app
 
-CMD ["py-app-tmpl"]
+EXPOSE ${API_PORT}
+
+CMD ["py-app-api"]

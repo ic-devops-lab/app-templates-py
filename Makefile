@@ -15,7 +15,7 @@ endif
 # HOST                := 0.0.0.0
 # PORT                := $(or $(APP_PORT),8000)
 
-IMAGE_NAME       		?= py-app-tmpl
+IMAGE_NAME       		?= py-app-api
 IMAGE_TAG        		?= dev
 IMAGE            		:= $(IMAGE_NAME):$(IMAGE_TAG)
 
@@ -102,17 +102,20 @@ ci: ## run local CI pipeline
 
 # ---------- Run (local code) ----------
 # Define run command for your app in the Makefile here
-run: ## Run the app
+run: ## Run the test app
 	@$(RUN_LOCKED) py-app-tmpl
+
+run-api: ## Run the API server
+	@$(RUN_LOCKED) py-app-api
 
 
 # ---------- Docker Compose ----------
 
 docker-build: ## Build the application image
-	@$(COMPOSE) build app
+	@$(COMPOSE) build api
 
 docker-run: ## Run the application in a temporary container
-	@$(COMPOSE) run --rm app
+	@$(COMPOSE) run --build --rm --service-ports api
 
 docker-down: ## Stop and remove Compose-managed containers
 	@$(COMPOSE) down
