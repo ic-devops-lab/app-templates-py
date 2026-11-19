@@ -82,8 +82,11 @@ type: ## Static type-check of the whole project with mypy
 type-app: ## Static type-check of the app code with mypy
 	@$(MYPY) src/py_app_tmpl
 
-test: ## Run unit tests
+test: ## Run all tests
 	@$(PYTEST) -v
+
+test-fast: ## Run unit tests
+	@$(PYTEST) -v -m "not integration"
 
 cov: ## Run tests with coverage
 	@$(PYTEST) --cov=py_app_tmpl --cov-report=term-missing -v
@@ -114,8 +117,12 @@ run-api: ## Run the API server
 docker-build: ## Build the application image
 	@$(COMPOSE) build api
 
-docker-run: ## Run the application in a temporary container
-	@$(COMPOSE) run --build --rm --service-ports api
+docker-run: ## Run the full application in containers
+	@$(COMPOSE) --profile postgres up
+
+docker-run-bald: ## Run the base application without optional services
+	@$(COMPOSE) up
+# 	@$(COMPOSE) run --build --rm --service-ports api
 
 docker-down: ## Stop and remove Compose-managed containers
 	@$(COMPOSE) down

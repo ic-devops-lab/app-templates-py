@@ -5,6 +5,10 @@
 **data/
 **logs/
 
+# not used yet
+src/py_app_tmpl/api/deps/
+tests/py_app_tmpl/api/deps/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

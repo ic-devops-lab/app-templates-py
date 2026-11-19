@@ -1,4 +1,4 @@
-# Python Project Template. FastAPI Application
+# Python Project Template. FastAPI Application with optional PostgresQL support
 
 A project template for a modern Python projects with all infrastructure for maintaining and testing configured and installed. Could be helpful if you are:
 - **Starting a new Python project** and want a solid foundation with best practices already configured
@@ -31,7 +31,10 @@ A project template for a modern Python projects with all infrastructure for main
 - **Dockerfile**: document for creating a Docker image
 - **docker compose**:  tool for defining and running multi-container applications
 - **Trivy**: security scanner for container images, code, and configurations
-- **FastAPI App**: base for a FastAPI service with several check endpoints (*Added*)
+- **FastAPI App**: base for a FastAPI service with several check endpoints
+- **Optional PostgreSQL support**: async SQLAlchemy/SQLModel engine,
+  session factory, readiness check, Docker Compose profile,
+  and integration tests using Testcontainers (*Added*)
 
 > See detailed Python code structure [here](./docs/architecture.md)
 
@@ -67,7 +70,12 @@ For more details about app configuration, please, check out [`configuration.md` 
 ## Quick start
 
 ```bash
+# install base dependencies
 uv sync --locked
+# install optional dependences (for example for postgres)
+uv sync --extra postgres
+# install dependencies for prod environment
+uv sync --no-dev --no-extra postgres
 
 # Test App
 make run
@@ -100,6 +108,51 @@ curl http://localhost:8000/health
 curl http://localhost:8000/ready
 curl http://localhost:8000/info
 ```
+
+---
+
+### Optional PostgreSQL support
+
+PostgreSQL is disabled by default. When enabled, the application creates
+an async database engine during startup, provides a session factory,
+checks connectivity through `/ready`, and disposes of the engine on shutdown.
+
+For local development, configure `.env`:
+
+```dotenv
+COMPOSE_PROFILES=postgres
+UV_EXTRAS=--extra postgres
+POSTGRES_ENABLED=true
+POSTGRES_URL=postgresql+asyncpg://app:devpassword@postgres:5432/appdb
+```
+
+Then start the application and database:
+
+```bash
+docker compose up --build
+curl http://localhost:8000/ready
+```
+
+Expected readiness response:
+
+```json
+{
+  "global_status": "ok",
+  "postgres": "ok",
+  "cache_placeholder": "ok",
+  "mq_placeholder": "ok"
+}
+```
+
+For tests, PostgreSQL integration tests use Testcontainers and require
+a running Docker daemon:
+
+```bash
+uv run --extra postgres pytest
+```
+
+The test suite provisions its own PostgreSQL container; no manually
+configured database is required.
 
 ---
 
@@ -176,77 +229,40 @@ All app code can be checked and tested using:
 
 ### Test environment configuration
 
-The project provides two mechanisms for managing application settings during tests, defined in [`tests/conftest.py`](./tests/conftest.py):
+Test configuration is managed through fixtures in `tests/conftest.py`
+and environment profiles in `src/helpers/test/env.py`.
 
-- **`pytest_configure()`** — establishes a global test environment before test collection.
-- **`override_settings()`** — allows individual tests to override environment variables with automatic cleanup.
+- `TestEnv` provides default test settings.
+- `ProdLikeTestEnv` provides production-like settings.
+- `PostgresTestEnv` enables PostgreSQL for individual tests.
+- `apply_test_env` applies a profile and clears the settings cache.
+- `async_client_factory` creates a FastAPI test client with a managed
+  application lifespan, after test configuration has been applied.
+- `postgres_test_env` starts a PostgreSQL Testcontainer and configures
+  its connection URL.
 
----
-
-#### Global test environment: `pytest_configure()`
-
-The `pytest_configure()` hook sets predefined environment variables before pytest collects and imports test modules.
-
-This is particularly useful when application modules initialize settings at import time:
-
-```python
-from py_app_tmpl.core.config import get_settings
-
-settings = get_settings()
-```
-
-Ordinary pytest fixtures execute after test collection, so they cannot guarantee that test environment variables are available before such imports.
-
-**Keep `pytest_configure()` enabled when:**
-- Application modules initialize settings at import time.
-- Most tests should use the same predefined test configuration.
-- You want a consistent test environment independent of the developer's local settings.
-
-**Consider commenting it out when:**
-- Tests should use application defaults or explicitly supplied environment variables.
-- Settings are initialized lazily, and individual fixtures provide all necessary configuration.
-- You need to test different startup configurations without globally forcing test values.
-
-**Important:** `pytest_configure()` modifies `os.environ` for the entire pytest process. It does not automatically restore those values between tests. Also, it runs before normal test collection, but not necessarily before imports performed by pytest plugins or earlier initialization hooks.
-
----
-
-#### Per-test overrides: `override_settings()`
-
-Use the `override_settings` fixture when an individual test needs different configuration values.
+Example:
 
 ```python
-def test_custom_app_name(override_settings):
-    override_settings.setenv("APP_NAME", "custom_app")
+@pytest.mark.asyncio
+async def test_readiness_postgres_ok(
+    postgres_test_env: None,
+    async_client_factory: AsyncClientFactory,
+) -> None:
+    async with async_client_factory() as client:
+        response = await client.get("/ready")
 
-    settings = get_settings()
-
-    assert settings.app_name == "custom_app"
+    assert response.status_code == 200
+    assert response.json()["postgres"] == "ok"
 ```
 
-The fixture uses pytest's `monkeypatch` to restore modified environment variables after the test and clears the `get_settings()` LRU cache before and after execution.
+Apply test configuration before creating the application. Changing
+environment variables after application startup does not reconfigure
+an existing database engine.
 
-**Use `override_settings()` when:**
-- Testing alternative configuration values.
-- Testing behavior controlled by environment variables.
-- Verifying configuration validation and error handling.
-- Preventing cached settings from leaking between tests.
-
-The fixture is **not autouse**: tests must explicitly request it.
-
-**Limitation:** Clearing `get_settings()` cache does not update settings objects already stored in module-level variables. For applications requiring dynamic configuration during tests, prefer lazy settings access or dependency injection.
-
----
-
-#### Recommended approach
-
-For this template, both mechanisms are available:
-
-- Keep `pytest_configure()` enabled for projects requiring a common test environment before test collection.
-- Use `override_settings()` for test-specific configuration changes.
-- Disable `pytest_configure()` when tests should rely entirely on application defaults or explicitly managed fixtures.
-
-When testing application defaults, remember that Pydantic Settings may also read values from a local `.env` file. Use `Settings(_env_file=None)` and explicitly control relevant environment variables to avoid unintended overrides.
+The default test environment is initialized before test collection.
+Individual tests can override settings using `apply_test_env` or
+`override_settings`.
 
 ---
 

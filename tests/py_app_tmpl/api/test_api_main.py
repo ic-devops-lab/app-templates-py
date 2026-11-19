@@ -10,8 +10,10 @@ from httpx2 import ASGITransport, AsyncClient, Response
 
 from helpers.test.env import ProdLikeTestEnv, TestEnv
 from py_app_tmpl.api import main
+from py_app_tmpl.core.config import Settings
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_lifespan_generates_logs(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level("INFO"):
@@ -23,6 +25,29 @@ async def test_lifespan_generates_logs(caplog: pytest.LogCaptureFixture) -> None
     assert "Application shutdown complete" in caplog.text
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_lifespan_calls_dispose_engine_when_pg_enabled(
+    postgres_test_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    disposed = False
+
+    async def fake_dispose_engine(engine: object) -> None:
+        nonlocal disposed
+        disposed = True
+
+    monkeypatch.setattr(
+        "py_app_tmpl.db.pg_engine.dispose_engine",
+        fake_dispose_engine,
+    )
+
+    async with main.lifespan(FastAPI()):
+        pass
+
+    assert disposed is True
+
+
+@pytest.mark.smoke
 def test_GunicornApp_class() -> None:
     app: FastAPI = main.create_app()
     options: dict[str, Any] = {
@@ -43,7 +68,8 @@ def test_GunicornApp_class() -> None:
     assert gunicorn_app.load() == app
 
 
-def test_GunicornApp_load_config(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.smoke
+def test_GunicornApp_load_config() -> None:
     """Test that GunicornApp correctly loads its configuration.
     Should skip None values from options.
     Should ignore unknown Gunicorn settings from options.
@@ -70,6 +96,7 @@ def test_GunicornApp_load_config(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not hasattr(gunicorn_app.cfg, "none_option")
 
 
+@pytest.mark.smoke
 def test_main_uses_gunicorn(monkeypatch: pytest.MonkeyPatch) -> None:
 
     test_env: ProdLikeTestEnv = ProdLikeTestEnv()
@@ -84,11 +111,9 @@ def test_main_uses_gunicorn(monkeypatch: pytest.MonkeyPatch) -> None:
         def run(self) -> None:
             captured["ran"] = True
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
+
     monkeypatch.setattr(
         main,
         "GunicornApp",
@@ -108,15 +133,13 @@ def test_main_uses_gunicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     assert options["loglevel"] == test_env.log_level.lower()
 
 
+@pytest.mark.smoke
 def test_main_uses_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     test_env: TestEnv = TestEnv()
     run_mock = Mock()
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
 
     monkeypatch.setattr(
         main,
@@ -137,15 +160,13 @@ def test_main_uses_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.mark.smoke
 def test_main_raises_value_error(monkeypatch: pytest.MonkeyPatch) -> None:
     test_env: TestEnv = TestEnv(api_reload=True, api_workers_count=2)
     run_mock = Mock()
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
 
     monkeypatch.setattr(
         main,
@@ -161,6 +182,7 @@ def test_main_raises_value_error(monkeypatch: pytest.MonkeyPatch) -> None:
         main.main()
 
 
+@pytest.mark.smoke
 def test_root_endpoint(sync_test_client: TestClient) -> None:
     response = sync_test_client.get("/")
 
@@ -168,6 +190,7 @@ def test_root_endpoint(sync_test_client: TestClient) -> None:
     assert response.json() == {"message": "Python Project Template API"}
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_root_endpoint_async(async_test_client: AsyncClient) -> None:
     response: Response = await async_test_client.get("/async_home")
@@ -176,6 +199,7 @@ async def test_root_endpoint_async(async_test_client: AsyncClient) -> None:
     assert response.json() == {"message": "Python Project Template Async API Home"}
 
 
+@pytest.mark.smoke
 def test_sync_client_runs_lifespan() -> None:
     events: list[str] = []
 
@@ -194,6 +218,7 @@ def test_sync_client_runs_lifespan() -> None:
     assert events == ["startup", "shutdown"]
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_async_client_runs_lifespan() -> None:
     events: list[str] = []

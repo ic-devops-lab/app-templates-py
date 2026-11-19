@@ -5,5 +5,15 @@
       "envManager": "ms-python.python:venv",
       "packageManager": "ms-python.python:pip"
     }
-  ]
+  ],
+  "python.terminal.activateEnvironment": false,
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "args": [
+        "-l"
+      ]
+    }
+  }
 }

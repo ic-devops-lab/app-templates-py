@@ -4,16 +4,18 @@ FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-alpine AS builder
 
 WORKDIR /app
 
+ARG UV_EXTRAS=""
+
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --no-install-project
+RUN uv sync --locked --no-dev --no-install-project ${UV_EXTRAS}
 
 COPY README.md ./
 COPY src/ ./src/
-RUN uv sync --locked --no-dev --no-editable
+RUN uv sync --locked --no-dev --no-editable ${UV_EXTRAS}
 
 FROM python:${PYTHON_VERSION}-alpine AS runtime
 
