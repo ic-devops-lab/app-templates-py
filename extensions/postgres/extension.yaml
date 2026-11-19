@@ -1,0 +1,10 @@
+name: postgres
+version: 1.0.0
+python_extra: postgres
+requires: []
+optional:
+  - tracing
+runtime:
+  enabled_setting: POSTGRES_ENABLED
+  required_when_enabled:
+    - POSTGRES_URL

@@ -13,6 +13,7 @@ class TestEnv:
         api_port: int = 8000,
         api_reload: bool = True,
         api_workers_count: int = 1,
+        postgres_enabled: bool = False,
         log_level: str = "DEBUG",
     ) -> None:
         self.app_name = app_name
@@ -21,6 +22,7 @@ class TestEnv:
         self.api_host = api_host
         self.api_port = api_port
         self.api_reload = api_reload
+        self.postgres_enabled = postgres_enabled
         self.api_workers_count = api_workers_count
         self.log_level = log_level
 
@@ -32,6 +34,7 @@ class TestEnv:
             "api_host": self.api_host,
             "api_port": self.api_port,
             "api_reload": self.api_reload,
+            "postgres_enabled": self.postgres_enabled,
             "api_workers_count": self.api_workers_count,
             "log_level": self.log_level,
         }
@@ -51,6 +54,7 @@ class ProdLikeTestEnv(TestEnv):
         api_port: int = 8000,
         api_reload: bool = False,
         api_workers_count: int = 2,
+        postgres_enabled: bool = False,
         log_level: str = "INFO",
     ) -> None:
         super().__init__(
@@ -61,5 +65,6 @@ class ProdLikeTestEnv(TestEnv):
             api_port=api_port,
             api_reload=api_reload,
             api_workers_count=api_workers_count,
+            postgres_enabled=postgres_enabled,
             log_level=log_level,
         )
