@@ -7,11 +7,11 @@ import uvicorn
 from fastapi import FastAPI
 from gunicorn.app.base import BaseApplication
 
-from py_app_tmpl.api.routers.system import router as system_router
-from py_app_tmpl.core.config import Settings, get_settings, validate_api_settings
-from py_app_tmpl.core.logging import configure_logging
+from ..core.config import Settings, get_settings, validate_api_settings
+from ..core.logging import configure_logging
+from .routers.system import router as system_router
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -27,10 +27,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     logger.info("Starting application lifespan...")
     # Initialize resources here, e.g., database connection, language detector, etc.
     logger.info("Application startup complete.")
+
+    settings = get_settings()
+    app.state.settings = settings
+
     try:
+        if settings.postgres_enabled:
+            from ..db.pg_engine import build_engine, dispose_engine
+            from ..db.pg_session import make_session_factory
+
+            engine = build_engine(
+                settings.postgres_url or "",
+                is_prod=settings.app_env == settings.app_prod_env_name,
+            )
+            app.state.pg_engine = engine
+            app.state.pg_sessionmaker = make_session_factory(engine)
+
         yield
     finally:
         # Clean up resources here, e.g., close database connection, etc.
+        if settings.postgres_enabled and hasattr(app.state, "pg_engine") and app.state.pg_engine:
+            await dispose_engine(app.state.pg_engine)  # type: ignore
         logger.info("Application shutdown complete.")
 
 
@@ -54,12 +71,6 @@ def create_app() -> FastAPI:
 
     logger.info("Adding routes and endpoints...")
     app.include_router(system_router)
-
-    @app.get("/async_home", response_model=dict)
-    async def async_root() -> dict[str, str]:  # type: ignore
-        return {"message": "Python Project Template Async API Home"}
-
-    app.get("/")(lambda: {"message": "Python Project Template API"})
 
     logger.info("FastAPI application created.")
     return app

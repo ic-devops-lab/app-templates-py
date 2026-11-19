@@ -10,6 +10,7 @@ from httpx2 import ASGITransport, AsyncClient, Response
 
 from helpers.test.env import ProdLikeTestEnv, TestEnv
 from py_app_tmpl.api import main
+from py_app_tmpl.core.config import Settings
 
 
 @pytest.mark.asyncio
@@ -84,11 +85,9 @@ def test_main_uses_gunicorn(monkeypatch: pytest.MonkeyPatch) -> None:
         def run(self) -> None:
             captured["ran"] = True
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
+
     monkeypatch.setattr(
         main,
         "GunicornApp",
@@ -112,11 +111,8 @@ def test_main_uses_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     test_env: TestEnv = TestEnv()
     run_mock = Mock()
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
 
     monkeypatch.setattr(
         main,
@@ -141,11 +137,8 @@ def test_main_raises_value_error(monkeypatch: pytest.MonkeyPatch) -> None:
     test_env: TestEnv = TestEnv(api_reload=True, api_workers_count=2)
     run_mock = Mock()
 
-    monkeypatch.setattr(
-        main,
-        "get_settings",
-        lambda: SimpleNamespace(**test_env.get_env_dict()),
-    )
+    settings = Settings(**test_env.get_env_dict())  # type: ignore
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
 
     monkeypatch.setattr(
         main,

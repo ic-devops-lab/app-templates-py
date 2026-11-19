@@ -67,7 +67,12 @@ For more details about app configuration, please, check out [`configuration.md` 
 ## Quick start
 
 ```bash
+# install base dependencies
 uv sync --locked
+# install optional dependences (for example for postgres)
+uv sync --extra postgres
+# install dependencies for prod environment
+uv sync --no-dev --no-extra postgres
 
 # Test App
 make run

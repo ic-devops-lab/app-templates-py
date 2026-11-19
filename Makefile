@@ -114,8 +114,12 @@ run-api: ## Run the API server
 docker-build: ## Build the application image
 	@$(COMPOSE) build api
 
-docker-run: ## Run the application in a temporary container
-	@$(COMPOSE) run --build --rm --service-ports api
+docker-run: ## Run the full application in containers
+	@$(COMPOSE) --profile postgres up
+
+docker-run-bold: ## Run the application in a temporary container
+	@$(COMPOSE) up
+# 	@$(COMPOSE) run --build --rm --service-ports api
 
 docker-down: ## Stop and remove Compose-managed containers
 	@$(COMPOSE) down

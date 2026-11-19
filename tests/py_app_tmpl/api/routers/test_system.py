@@ -42,8 +42,7 @@ async def test_readiness_probe_ok(async_test_client: AsyncClient) -> None:
 
     assert response.status_code == 200
     assert "global_status" in data
-    assert "db_healthy" in data
-    assert "cache_healthy" in data
+    assert "postgres" in data
     assert data["global_status"] == "ok"
 
 
@@ -51,13 +50,17 @@ async def test_readiness_probe_ok(async_test_client: AsyncClient) -> None:
 async def test_readiness_probe_service_unvailable(
     async_test_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from py_app_tmpl.api.checks import CheckResult, CheckStatus
 
     # Force readiness checks to fail by patching concurrent result aggregation.
-    async def fake_gather(*args: object, **_kwargs: object) -> tuple[bool, bool]:
+    async def fake_gather(*args: object, **_kwargs: object) -> tuple[CheckResult, ...]:
         for arg in args:
             if inspect.isawaitable(arg):
                 await arg
-        return (False, False)
+        return (
+            CheckResult("postgres", CheckStatus.FAIL),
+            CheckResult("cache_placeholder", CheckStatus.FAIL),
+        )
 
     monkeypatch.setattr("py_app_tmpl.api.routers.system.asyncio.gather", fake_gather)
 
@@ -66,6 +69,5 @@ async def test_readiness_probe_service_unvailable(
 
     assert response.status_code == 503
     assert "global_status" in data
-    assert "db_healthy" in data
-    assert "cache_healthy" in data
+    assert "postgres" in data
     assert data["global_status"] == "fail"

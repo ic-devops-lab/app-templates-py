@@ -2,11 +2,13 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
-from py_app_tmpl.core.config import Settings, get_settings
+from ...api.checks import CheckResult, CheckStatus, dummy_check
+from ...core.config import Settings, get_settings
+from ...db.pg_checks import check_postgres
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="",
@@ -35,6 +37,8 @@ async def get_system_info() -> dict[str, Any]:
         "environment": settings.app_env,
         "logging_level": settings.log_level,
         "api_workers_count": settings.api_workers_count,
+        "api_reload": settings.api_reload,
+        "postgres_enabled": settings.postgres_enabled,
     }
 
 
@@ -60,7 +64,10 @@ async def get_liveness_probe() -> dict[str, str]:
     description="Check the readiness status of the system.",
     tags=["health"],
 )
-async def get_readyness_probe(response: Response) -> dict[str, str]:
+async def get_readyness_probe(
+    request: Request,
+    response: Response,
+) -> dict[str, str]:
     """
     # Run dependency checks concurrently to avoid performance bottlenecks
     # Example:
@@ -69,26 +76,34 @@ async def get_readyness_probe(response: Response) -> dict[str, str]:
     #     check_cache()
     # )
     """
-
-    # Simulate any check for now with some delay
-    async def dummy_check(res: bool = True) -> bool:
-        await asyncio.sleep(0.1)
-        return res
+    pg_enabled: bool = request.app.state.settings.postgres_enabled
+    pg_engine = getattr(request.app.state, "pg_engine", None)
 
     # gather all checks
     # replace with actual checks as needed
-    (db_healthy, cache_healthy) = await asyncio.gather(
-        dummy_check(),
-        dummy_check(),
+    checks: tuple[CheckResult, ...] = await asyncio.gather(
+        check_postgres(pg_engine, pg_enabled),
+        dummy_check("cache_placeholder"),
+        dummy_check("mq_placeholder"),
     )
+    check_list: list[CheckResult] = list(checks)
 
-    service_status = all([db_healthy, cache_healthy])
-    if not service_status:
+    service_status = (
+        "fail" if any([check.status == CheckStatus.FAIL for check in check_list]) else "ok"
+    )
+    if service_status == "fail":
         # Force a 503 status code
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return {
-        "global_status": "ok" if service_status else "fail",
-        "db_healthy": "ok" if db_healthy else "fail",
-        "cache_healthy": "ok" if cache_healthy else "fail",
+        "global_status": service_status,
+        **{check.name: check.status.value for check in check_list},
     }
+
+
+@router.get("/async_home", response_model=dict)
+async def async_root() -> dict[str, str]:  # type: ignore
+    return {"message": "Python Project Template Async API Home"}
+
+
+router.get("/")(lambda: {"message": "Python Project Template API"})

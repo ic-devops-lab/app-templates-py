@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_name: str = "Python Project Template"
     app_version: str = "0.1.0"
     app_env: str = "local"
+    app_prod_env_name: str = "prod"
 
     api_host: str = Field(default="127.0.0.1", min_length=3)
     api_port: int = Field(default=8000, ge=1, le=65535)
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 
