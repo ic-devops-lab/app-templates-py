@@ -1,0 +1,11 @@
+name: metrics
+version: 1.0.0
+python_extra: metrics
+
+requires: []
+
+optional: []
+
+runtime:
+  enabled_setting: METRICS_ENABLED
+  required_when_enabled: []

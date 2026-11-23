@@ -17,6 +17,8 @@ class TestEnv:
 
     log_level: str = "DEBUG"
 
+    metrics_enabled: bool = False
+
     postgres_enabled: bool = False
     postgres_url: str | None = None
 

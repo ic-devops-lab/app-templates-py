@@ -39,6 +39,7 @@ async def get_system_info() -> dict[str, Any]:
         "api_workers_count": settings.api_workers_count,
         "api_reload": settings.api_reload,
         "postgres_enabled": settings.postgres_enabled,
+        "metrics_enabled": settings.metrics_enabled,
     }
 
 

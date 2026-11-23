@@ -30,6 +30,10 @@ postgres = [
     "sqlalchemy[asyncio]",
     "sqlmodel>=0.0.50,<0.0.51",
 ]
+metrics = [
+    "prometheus-client>=0.26.0,<0.27.0",
+    "prometheus-fastapi-instrumentator>=8.1.0,<8.2.0",
+]
 
 [dependency-groups]
 dev = [

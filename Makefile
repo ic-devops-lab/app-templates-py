@@ -13,24 +13,25 @@ endif
 # Here you can set app-specific parameters, e.g.:
 # APP_MODULE					:= py_app_tmpl.main:app
 # HOST                := 0.0.0.0
-# PORT                := $(or $(APP_PORT),8000)
+# PORT              	:= $(or $(APP_PORT),8000)
 
 IMAGE_NAME       		?= py-app-api
 IMAGE_TAG        		?= dev
 IMAGE            		:= $(IMAGE_NAME):$(IMAGE_TAG)
 
 TRIVY_SEVERITY   		?= HIGH,CRITICAL
+UV_EXTRAS 					?=
 
 # Tools
 UV                  := uv
-RUN                 := $(UV) run          	# <— use the project's venv
-RUN_LOCKED          := $(RUN) --locked			# run with locked dependencies
-RUFF                := $(RUN_LOCKED) ruff		# ruff
-MYPY                := $(RUN_LOCKED) mypy		# mypy
-PYTEST              := $(RUN_LOCKED) pytest	# pytest
-BANDIT              := $(RUN_LOCKED) bandit	# bandit
-COMPOSE							:= docker compose				# docker compose
-TRIVY               := trivy								# trivy
+RUN                 := $(UV) run          						# <— use the project's venv
+RUN_LOCKED          := $(RUN) --locked $(UV_EXTRAS)		# run with locked dependencies
+RUFF                := $(RUN_LOCKED) ruff							# ruff
+MYPY                := $(RUN_LOCKED) mypy							# mypy
+PYTEST              := $(RUN_LOCKED) pytest						# pytest
+BANDIT              := $(RUN_LOCKED) bandit						# bandit
+COMPOSE							:= docker compose									# docker compose
+TRIVY               := trivy													# trivy
 
 # ---------- Housekeeping ----------
 .PHONY: help
@@ -45,10 +46,10 @@ env: ## Create .env from .env.example if missing
 
 check: ## Check local Python development prerequisites
 	@command -v uv >/dev/null || { echo "Missing 'uv'"; exit 1; }
-	@$(UV) run --locked ruff --version >/dev/null
-	@$(UV) run --locked mypy --version >/dev/null
-	@$(UV) run --locked pytest --version >/dev/null
-	@$(UV) run --locked bandit --version >/dev/null
+	@$(RUFF) --version >/dev/null
+	@$(MYPY) --version >/dev/null
+	@$(PYTEST) --version >/dev/null
+	@$(BANDIT) --version >/dev/null
 	@echo "Python development tools OK."
 
 check-container: ## Check container development prerequisites

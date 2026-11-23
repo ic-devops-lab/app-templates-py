@@ -73,6 +73,12 @@ def create_app() -> FastAPI:
     logger.info("Adding routes and endpoints...")
     app.include_router(system_router)
 
+    if settings.metrics_enabled:
+        from .metrics import configure_metrics
+
+        logger.info("Configuring metrics...")
+        configure_metrics(app)
+
     logger.info("FastAPI application created.")
     return app
 

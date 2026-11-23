@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 from types import SimpleNamespace
 
 import pytest
@@ -6,6 +7,8 @@ import pytest
 from helpers.test.env import TestEnv
 from py_app_tmpl.core import config
 from py_app_tmpl.core.config import Settings, get_settings
+
+pytestmark = pytest.mark.smoke
 
 
 def test_env_fixture_overrides_sensitive_vars() -> None:
@@ -72,5 +75,27 @@ def test_validate_api_settings_raises_value_error() -> None:
     with pytest.raises(
         ValueError,
         match="Configuration error: Auto-reload cannot be enabled with multiple workers.",
+    ):
+        validate_api_settings(settings)
+
+
+def test_validate_api_settings_metrics_enabled(apply_test_env: Callable[[TestEnv], None]) -> None:
+    from py_app_tmpl.core.config import validate_api_settings
+
+    apply_test_env(
+        TestEnv(
+            api_reload=False,
+            api_workers_count=2,
+            metrics_enabled=True,
+        )
+    )
+    settings = get_settings()
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Configuration error: Prometheus metrics currently "
+            "support single-worker operation only."
+        ),
     ):
         validate_api_settings(settings)

@@ -1,4 +1,4 @@
-# Python Project Template. FastAPI Application with optional PostgresQL support
+# Python Project Template. FastAPI Application with optional Observability support
 
 A project template for a modern Python projects with all infrastructure for maintaining and testing configured and installed. Could be helpful if you are:
 - **Starting a new Python project** and want a solid foundation with best practices already configured
@@ -32,18 +32,27 @@ A project template for a modern Python projects with all infrastructure for main
 - **docker compose**:  tool for defining and running multi-container applications
 - **Trivy**: security scanner for container images, code, and configurations
 - **FastAPI App**: base for a FastAPI service with several check endpoints
-- **Optional PostgreSQL support**: async SQLAlchemy/SQLModel engine,
-  session factory, readiness check, Docker Compose profile,
-  and integration tests using Testcontainers (*Added*)
+- **Optional PostgreSQL support**:
+  - async SQLAlchemy/SQLModel engine,
+  - session factory,
+  - readiness check,
+  - Docker Compose profile,
+  - integration tests using Testcontainers
+- **Optional Observability**: (*Added*)
+  - Prometheus instrumentation for FastAPI
+  - `/metrics` endpoint and unit tests for it
+
 
 > See detailed Python code structure [here](./docs/architecture.md)
 
 ---
 
-## Previous Stage
+## Previous Stages
 
 1. [Python Project Template. Barebones](https://github.com/ic-devops-lab/app-templates-py/tree/barebones-v1.0.0)
 2. [Python Project Template. Containerized App](https://github.com/ic-devops-lab/app-templates-py/tree/containerized-v1.0.0)
+3. [Python Project Template. FastAPI Application](https://github.com/ic-devops-lab/app-templates-py/tree/fastapi-v1.0.0)
+4. [Python Project Template. FastAPI Application with optional PostgresQL support](https://github.com/ic-devops-lab/app-templates-py/tree/postgres-v1.0.0)
 
 ---
 
@@ -156,6 +165,96 @@ configured database is required.
 
 ---
 
+### Optional Prometheus Metrics
+
+The application supports optional Prometheus instrumentation using `prometheus-fastapi-instrumentator`.
+
+The extension provides:
+
+- HTTP request counters by route, method, and response status.
+- HTTP request duration histograms.
+- Python garbage collection and runtime metrics.
+- Process-level metrics, including CPU and memory usage.
+- A dedicated `/metrics` endpoint.
+
+Each application instance uses an independent Prometheus collector registry.
+
+#### Local development
+
+Install the optional dependencies:
+
+```bash
+uv sync --locked --extra metrics
+```
+
+Enable metrics in `.env`:
+
+```dotenv
+METRICS_ENABLED=true
+```
+
+Start the application:
+
+```bash
+uv run --extra metrics py-app-api
+```
+
+Generate some traffic and retrieve the metrics:
+
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+```
+
+#### Docker Compose
+
+Configure `.env`:
+
+```dotenv
+METRICS_ENABLED=true
+UV_EXTRAS=--extra metrics
+```
+
+Build and start the application:
+
+```bash
+make docker-build
+make docker-run-bald
+```
+
+To combine metrics with PostgreSQL, install both extras:
+
+```dotenv
+UV_EXTRAS=--extra postgres --extra metrics
+```
+
+Configure PostgreSQL as described in the PostgreSQL extension section.
+
+#### Testing
+
+Run the metrics tests:
+
+```bash
+uv run --extra metrics pytest tests/py_app_tmpl/api/test_metrics_endpoint.py -v
+```
+
+Run the complete test suite with all optional extensions:
+
+```bash
+uv run --all-extras pytest -v
+```
+
+#### Limitations
+
+- Metrics are disabled by default.
+- When disabled, `/metrics` returns HTTP 404.
+- Requests to `/metrics` are excluded from HTTP instrumentation.
+- Metrics currently support single-worker operation (`API_WORKERS_COUNT=1`). Gunicorn multiprocess metrics aggregation is not implemented.
+- In production, access to `/metrics` should be restricted to trusted monitoring systems.
+- Metrics are stored in memory and reset when the application process restarts.
+
+---
+
 ## Build
 
 To build wheel and source distributions, run:
@@ -200,7 +299,8 @@ All app code can be checked and tested using:
     ```
 - **Tests**: a test suite with a coverage report
     ```bash
-    uv run pytest                                 # run tests
+    uv run --locked --all-extras pytest           # run tests
+
     # run tests and calculate coverage
     uv run pytest --cov=py_app_tmpl --cov-report=term-missing -v
 
@@ -208,8 +308,9 @@ All app code can be checked and tested using:
     uv run pytest tests/py_app_tmpl/core/test_config.py::test_env_fixture_overrides_sensitive_vars -xvs
 
     # using make
-    make test                                     # run tests
-    make cov                                      # run tests and show the coverage report
+    make test                                     # run all tests
+    make test-fast                                # run quick tests only (no integration or regression tests)
+    make cov                                      # run all tests and show the coverage report
     ```
 - **SAST check**: a SAST check using the bandit tool
     ```bash
@@ -220,7 +321,7 @@ All app code can be checked and tested using:
     ```
 - **Local CI**: run all checks and tests at once
   ```bash
-  make ci
+  make ci UV_EXTRAS=--all-extras
   ```
   > Local CI also includes build command to check whether the package can be built.
 ---

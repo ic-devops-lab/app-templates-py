@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     api_reload: bool = False
     api_workers_count: int = Field(default=1, ge=1)
 
+    metrics_enabled: bool = False
+
     postgres_enabled: bool = Field(default=False)
     postgres_url: str | None = None
 
@@ -55,4 +57,12 @@ def validate_api_settings(settings: Settings) -> None:
     if settings.api_reload and settings.api_workers_count > 1:
         raise ValueError(
             "Configuration error: Auto-reload cannot be enabled with multiple workers."
+        )
+
+    # temporary limitation: Prometheus metrics only support single-worker operation
+    # remove when implemented for multi-worker setups
+    if settings.metrics_enabled and settings.api_workers_count > 1:
+        raise ValueError(
+            "Configuration error: Prometheus metrics currently "
+            "support single-worker operation only."
         )
