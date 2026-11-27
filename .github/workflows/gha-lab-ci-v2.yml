@@ -1,0 +1,105 @@
+name: GitHub Actions Lab CI v2 (Matrix Strategy)
+
+on:
+  push:
+    branches:
+      - lab/github-actions
+  pull_request:
+    branches:
+      - lab/github-actions
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: Python version
+        required: false
+        default: "3.13"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  quality:
+    name: Code quality
+    runs-on: ["self-hosted", "linux", "x64"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ inputs.python-version || env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: SAST check (bandit)
+        run: uv run bandit -rv src/py_app_tmpl
+
+  tests:
+    name: Auto tests (Python ${{ matrix.python-version }})
+    runs-on: ["self-hosted", "linux", "x64"]
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        python-version:
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras
+
+      - name: Run tests
+        run: uv run pytest
+
+  build:
+    name: Build package
+    runs-on: ["self-hosted", "linux", "x64"]
+    needs:
+      - quality
+      - tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ inputs.python-version || env.PYTHON_VERSION }}
+
+      - name: Build package
+        run: uv build
+
+      - name: Upload package
+        uses: actions/upload-artifact@v6
+        with:
+          name: python-package
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error

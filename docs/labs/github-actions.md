@@ -157,3 +157,32 @@ Dependent job: needs.prepare.uotputs.version
 This mechanism becomes especially useful when a centralized build workflow needs to return an image tag, image digest, package version or release identifier to its caller.
 
 ---
+
+## Matrix strategy
+
+[workflow file](../../.github/workflows/gha-lab-ci-v2.yml)
+
+The tests job has been modified to execute against two Python versions.
+
+```yaml
+tests:
+  name: Tests (Python ${{ matrix.python-version }})
+  ...
+  strategy:
+    fail-fast: false
+    max-parallel: 2
+
+    matrix:
+      python-version:
+        - "3.13"
+        - "3.14"
+
+  steps:
+    ...
+    - uses: astral-sh/setup-uv@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    ...
+```
+
+---
