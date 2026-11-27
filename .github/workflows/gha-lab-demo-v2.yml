@@ -1,0 +1,76 @@
+name: GitHub Actions Lab Demo v2 (Step and job outputs)
+
+on:
+  push:
+    branches:
+      - lab/github-actions
+  pull_request:
+    branches:
+      - lab/github-actions
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: Python version
+        required: false
+        default: "3.13"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  metadata:
+    name: Workflow metadata
+    runs-on: ["self-hosted", "linux", "x64"]
+    steps:
+      - name: Show execution context
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUNNER_OS: ${{ runner.os }}
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          echo "Repository: $REPOSITORY"
+          echo "Ref: $REF"
+          echo "SHA: $SHA"
+          echo "Event: $EVENT"
+          echo "Actor: $ACTOR"
+          echo "Run ID: $RUN_ID"
+          echo "Run Attempt: $RUN_ATTEMPT"
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner Name: $RUNNER_NAME"
+
+  prepare:
+    name: Prepare build metadata
+    runs-on: ["self-hosted", "linux", "x64"]
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="0.1.0-${GITHUB_SHA}"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+  display-version:
+    runs-on: ["self-hosted", "linux", "x64"]
+    needs: prepare
+
+    steps:
+      - name: Display version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          echo "Build version is $VERSION"

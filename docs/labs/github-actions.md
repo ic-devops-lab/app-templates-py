@@ -33,6 +33,32 @@ GitHub Actions contexts are particularly important because they are used extensi
 
 Let's add a diagnostic job to the workflow:
 ```yaml
+  metadata:
+    name: Workflow metadata
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show execution context
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUNNER_OS: ${{ runner.os }}
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          echo "Repository: $REPOSITORY"
+          echo "Ref: $REF"
+          echo "Commit: $SHA"
+          echo "Event: $EVENT"
+          echo "Actor: $ACTOR"
+          echo "Run ID: $RUN_ID"
+          echo "Attempt: $RUN_ATTEMPT"
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner: $RUNNER_NAME"
 ```
 
 The main contexts worth remembering:
@@ -78,5 +104,56 @@ env:
   PR_TITLE: ${{ github.event.pull_request.title }}
 run: echo "$PR_TITLE"
 ```
+
+---
+
+## Step and job outputs
+
+[workflow file](../../.github/workflows/gha-lab-demo-v2.yml)
+
+This is something we'll need when implementing reusable workflows.
+
+Add another experimental job:
+```yaml
+  prepare:
+    name: Prepare build metadata
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="0.1.0-${GITHUB_SHA::7}"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+```
+
+Then add a consumer job:
+```yaml
+  display-version:
+    runs-on: ubuntu-latest
+    needs: prepare
+
+    steps:
+      - name: Display version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: echo "Build version is $VERSION"
+```
+
+```text
+Job: prepare
+  Step: version
+    -> Writes value to $GITHUB_OUTPUT
+            ↓
+    Step output: steps.version.outputs.value
+            ↓
+  Job output: outputs.version
+            ↓
+Dependent job: needs.prepare.uotputs.version
+```
+This mechanism becomes especially useful when a centralized build workflow needs to return an image tag, image digest, package version or release identifier to its caller.
 
 ---
