@@ -1,12 +1,12 @@
 name: GitHub Actions Lab Demo v2 (Step and job outputs)
 
 on:
-  push:
-    branches:
-      - lab/github-actions
-  pull_request:
-    branches:
-      - lab/github-actions
+  # push:
+  #   branches:
+  #     - lab/github-actions
+  # pull_request:
+  #   branches:
+  #     - lab/github-actions
   workflow_dispatch:
     inputs:
       python-version:
@@ -28,7 +28,9 @@ env:
 jobs:
   metadata:
     name: Workflow metadata
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     steps:
       - name: Show execution context
         env:
@@ -54,7 +56,9 @@ jobs:
 
   prepare:
     name: Prepare build metadata
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     outputs:
       version: ${{ steps.version.outputs.value }}
     steps:

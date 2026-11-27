@@ -1,0 +1,36 @@
+name: Runners Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
+
+    timeout-minutes: 5
+
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        instance: [1, 2]
+
+    steps:
+      - name: Runner information
+        run: |
+          echo "Instance: ${{ matrix.instance }}"
+          echo "Runner: $RUNNER_NAME"
+          echo "OS: $RUNNER_OS"
+          echo "Architecture: $RUNNER_ARCH"
+
+          hostname
+          whoami
+          docker --version
+
+      - name: Simulate workload
+        run: sleep 30

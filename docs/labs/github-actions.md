@@ -1,6 +1,28 @@
 # Lab: Github Actions CI
 
-## v1 Basic Workflow
+## Self-hosted runners and runner groups
+
+For this lab will need
+- 2 organization runners
+- a runner group
+
+Create a Runner Group:
+- Github Organization > Settings > Actions > Runner groups > New runner group
+
+Check [this runbook](https://github.com/ic-devops-lab/devops-labs/blob/main/GitHubSelfHostedRunners/runbook.md) to create a runner and run it as a service.
+
+Use this command to register a runner at Organization Scope with created group:
+```bash
+export RUNNER_GROUP=my-runner-group
+sudo -u "$RUNNER_USER" -H bash -lc "cd '$ORG_RUNNER_DIR' && ./config.sh --url $ORG_URL --token '$ORG_RUNNER_TOKEN' --name '$ORG_RUNNER_NAME --runnergroup $RUNNER_GROUP' --labels '$ORG_LABELS' --unattended"
+```
+Otherwise you need to move a new runner from a default group to the one you've just created.
+
+Use [Runners Smoke Test](../../.github/workflows/runners-smoke-test.yaml) to verify runners.
+
+---
+
+## Basic Workflow
 
 [workflow file](../../.github/workflows/gha-lab-ci-v1.yml)
 

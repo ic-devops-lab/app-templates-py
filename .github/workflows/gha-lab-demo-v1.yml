@@ -28,7 +28,9 @@ env:
 jobs:
   metadata:
     name: Workflow metadata
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     steps:
       - name: Show execution context
         env:

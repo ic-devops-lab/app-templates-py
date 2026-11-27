@@ -28,7 +28,9 @@ env:
 jobs:
   quality:
     name: Code quality
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -55,7 +57,9 @@ jobs:
 
   tests:
     name: Auto tests (Python ${{ matrix.python-version }})
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -80,7 +84,9 @@ jobs:
 
   build:
     name: Build package
-    runs-on: ["self-hosted", "linux", "x64"]
+    runs-on:
+      group: devops-lab-runners
+      labels: [self-hosted, linux, x64]
     needs:
       - quality
       - tests
