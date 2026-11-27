@@ -186,3 +186,24 @@ tests:
 ```
 
 ---
+
+## Test concurrency
+
+We already defined:
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+Make two consecutive pushes while the first workflow is still running.
+
+Observe whether the previous execution is cancelled.
+
+- Cancel obsolete executions on feature branch CI or pull request validation.
+- Usually avoid cancelling an active deployment on production deployment.
+- Serialize competing deployments for shared deployment environment.
+
+For release pipelines concurrency is not necessarily a strict FIFO deployment queue.
+
+---
