@@ -1,4 +1,4 @@
-# Lab: Github Actions CI
+# Lab: Github Actions CI: 01 Fundamentals
 
 ## Self-hosted runners and runner groups
 
@@ -7,7 +7,7 @@ For this lab will need
 - a runner group
 
 Create a Runner Group:
-- Github Organization > Settings > Actions > Runner groups > New runner group
+- Github Organization → Settings → Actions → Runner groups → New runner group
 
 Check [this runbook](https://github.com/ic-devops-lab/devops-labs/blob/main/GitHubSelfHostedRunners/runbook.md) to create a runner and run it as a service.
 
@@ -99,6 +99,8 @@ The main contexts worth remembering:
 | matrix   | Current matrix configuration |
 | strategy | Matrix execution metadata |
 
+---
+
 ### Expression evaluation vs shell execution
 
 This distinction is important for both troubleshooting and security.
@@ -168,7 +170,7 @@ Then add a consumer job:
 ```text
 Job: prepare
   Step: version
-    -> Writes value to $GITHUB_OUTPUT
+    → Writes value to $GITHUB_OUTPUT
             ↓
     Step output: steps.version.outputs.value
             ↓

@@ -1,0 +1,59 @@
+name: GitHub Actions Lab CI v4 (with versionedReusable Workflow)
+
+on:
+  push:
+    branches:
+      - lab/github-actions
+  # pull_request:
+  #   branches:
+  #     - lab/github-actions
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: Python version
+        required: false
+        default: "3.13"
+        type: string
+      run-quality-checks:
+        type: boolean
+        default: true
+      run-tests:
+        type: boolean
+        default: true
+      build-package:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ic-devops-lab/github-actions-shared-workflows/.github/workflows/python-ci.yaml@v1
+    with:
+      python-version: ${{ inputs.python-version || '3.13' }}
+      runner-group: devops-lab-runners
+      runner-label: self-hosted
+      run-quality-checks: ${{ inputs.run-quality-checks || true }}
+      run-tests: ${{ inputs.run-tests || true }}
+      build-package: ${{ inputs.build-package || true }}
+      artifact-retention-days: 3
+
+  summary:
+    needs: ci
+    if: ${{ needs.ci.result == 'success' && needs.ci.outputs.build-id != '' }}
+    runs-on:
+      group: devops-lab-runners
+      labels: self-hosted
+    steps:
+      - name: Display build identifier
+        env:
+          BUILD_ID: ${{ needs.ci.outputs.build-id }}
+        run: |
+          echo "Build ID: $BUILD_ID"
+          echo "### Build completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build ID: \`$BUILD_ID\`" >> "$GITHUB_STEP_SUMMARY"
