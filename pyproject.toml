@@ -3,7 +3,7 @@ name = "py-app-tmpl"
 version = "0.1.0"
 description = "Reusable Python project starter"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.13,<3.15"
 authors = [
     { name = "Iuri Covaliov", email = "iu.covaliov@gmail.com" }
 ]
